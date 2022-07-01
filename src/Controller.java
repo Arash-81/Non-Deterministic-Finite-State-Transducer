@@ -14,7 +14,7 @@ public class Controller {
 
     public void addState(String stateName, boolean isFinal){
         map.put(stateName, count);
-        states.add(count, new State(stateName, isFinal));
+        states.add(count, new State(isFinal));
         count++;
     }
 
@@ -31,25 +31,37 @@ public class Controller {
     }
 
     public void parseInput(String inputString){
-        search(states.get(0), inputString.toCharArray(), 0, "");
+        if (!searchForOutput(states.get(0), inputString.toCharArray(), 0, ""))
+            System.out.println("FAIL");
     }
 
-    private void search(State current, char[] input, int iIn, String output){
-        if (current.isFinal() && iIn == input.length) {
-            System.out.println(output);
-            return;
-        }
-        if (iIn == input.length)
-            //check for lambda transitions
-            return;
+    private boolean searchForOutput(State current, char[] input, int inputIndex, String output){
+        if (inputIndex == input.length)
+            return lambdaTransitions(current, output);
 
-        State[] next = current.getNextStates(input[iIn]);
-        for (State state : next){
-            char ch = current.computeOutput(state, input[iIn]);
+        StateInfo[] next = current.getNextStates(input[inputIndex]);
+        for (StateInfo state : next){
+            char ch = state.input();
             if (ch == '\u0000')
-                search(state, input, iIn, output);
-            else
-                search(state, input, iIn + 1, output + ch);
+                searchForOutput(state.state(), input, inputIndex, output);
+            else {
+                if (state.output() != '\u0000')
+                    searchForOutput(state.state(), input, inputIndex + 1, output + state.output());
+                else
+                    searchForOutput(state.state(), input, inputIndex + 1, output);
+            }
         }
+        return false;
+    }
+
+    private boolean lambdaTransitions(State current, String output){
+        if (current.isFinal()){
+            System.out.println(output);
+            return true;
+        }
+        State[] states = current.lambdaTransitions();
+        for (State state : states)
+            lambdaTransitions(state, output);
+        return false;
     }
 }

@@ -21,28 +21,23 @@ public class State {
             this.output[0] = output;
         }
 
-        public boolean validInput(char in){
-            for (char c : input)
-                if (c == in)
-                    return true;
-            return false;
-        }
-
-        public char getOutput(char in){
-            for (int i = 0; i < input.length; i++)
+        public StateInfo getNextStateInfo(char in, State state){
+            for (int i = 0; i < input.length; i++) {
                 if (in == input[i])
-                    return output[i];
-            return '\u0000';
+                    return new StateInfo(in, output[i], state);
+                if (in == '\u0000')
+                    //add lambda transitions
+                    return new StateInfo('\u0000', output[i], state);
+            }
+            return null;
         }
     }
 
     private final LinkedList<Transition> transitions;
-    String name;
     private final boolean isFinal;
 
-    public State(String name, boolean isFinal) {
+    public State(boolean isFinal) {
         transitions = new LinkedList<>();
-        this.name = name;
         this.isFinal = isFinal;
     }
 
@@ -54,24 +49,26 @@ public class State {
         transitions.add(new Transition(out, input, output));
     }
 
-    public State[] getNextStates(char input) {
-        LinkedList<State> next = new LinkedList<>();
-        for (Transition transition : transitions){
-            if (transition.validInput(input))
-                next.add(transition.state);
+    public StateInfo[] getNextStates(char input) {
+        LinkedList<StateInfo> states = new LinkedList<>();
+        for (Transition transition : transitions) {
+            StateInfo state = transition.getNextStateInfo(input, transition.state);
+            if (state != null)
+                states.add(state);
         }
-        return next.toArray(new State[0]);
-    }
 
-    public char computeOutput(State next, char input){
-        for (Transition transition: transitions){
-            if (transition.state == next)
-                return transition.getOutput(input);
-        }
-        return ' ';
+        return states.toArray(new StateInfo[0]);
     }
 
     public boolean isFinal(){
         return isFinal;
+    }
+
+    public State[] lambdaTransitions(){
+        LinkedList<State> states = new LinkedList<>();
+        for (Transition transition : transitions)
+            if (transition.input[0] == '\u0000')
+                states.add(transition.state);
+        return states.toArray(new State[0]);
     }
 }
