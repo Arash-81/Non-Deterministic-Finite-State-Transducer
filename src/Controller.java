@@ -4,18 +4,19 @@ import java.util.HashMap;
 public class Controller {
     private final ArrayList<State> states;
     private final HashMap<String, Integer> map;
-    private int count;
+    private int ALIndex;
+    private boolean isAccept;
 
     public Controller() {
         states = new ArrayList<>();
         map =  new HashMap<>();
-        count = 0;
+        ALIndex = 0;
     }
 
     public void addState(String stateName, boolean isFinal){
-        map.put(stateName, count);
-        states.add(count, new State(isFinal));
-        count++;
+        map.put(stateName, ALIndex);
+        states.add(ALIndex, new State(isFinal));
+        ALIndex++;
     }
 
     public void addTransition(String inStateName, char input, char output, String outStateName){
@@ -27,41 +28,48 @@ public class Controller {
     public void addSetTransition(String inStateName, String inputSet, String outStateName){
         State inState = states.get(map.get(inStateName));
         State outState = states.get(map.get(outStateName));
-        inState.addTransition(outState, inputSet.toCharArray(), inputSet.toCharArray());
+        inState.addTransitions(outState, inputSet.toCharArray(), inputSet.toCharArray());
     }
 
     public void parseInput(String inputString){
-        if (!searchForOutput(states.get(0), inputString.toCharArray(), 0, ""))
+         isAccept = false;
+        searchForOutput(states.get(0), inputString.toCharArray(), 0, "");
+        if (!isAccept)
             System.out.println("FAIL");
     }
 
-    private boolean searchForOutput(State current, char[] input, int inputIndex, String output){
-        if (inputIndex == input.length)
-            return lambdaTransitions(current, output);
+    private void searchForOutput(State current, char[] input, int inputIndex, String output){
+        if (inputIndex == input.length) {
+            lambdaTransitions(current, output);
+            return;
+        }
 
-        StateInfo[] next = current.getNextStates(input[inputIndex]);
-        for (StateInfo state : next){
-            char ch = state.input();
+        StateInfo[] statesInfo = current.getNextStatesInfo(input[inputIndex]);
+        for (StateInfo stateInfo : statesInfo){
+            char ch = stateInfo.input();
             if (ch == '\u0000')
-                searchForOutput(state.state(), input, inputIndex, output);
+                searchForOutput(stateInfo.state(), input, inputIndex, output + stateInfo.output());
             else {
-                if (state.output() != '\u0000')
-                    searchForOutput(state.state(), input, inputIndex + 1, output + state.output());
+                if (stateInfo.output() != '\u0000')
+                    searchForOutput(stateInfo.state(), input, inputIndex + 1, output + stateInfo.output());
                 else
-                    searchForOutput(state.state(), input, inputIndex + 1, output);
+                    searchForOutput(stateInfo.state(), input, inputIndex + 1, output);
             }
         }
-        return false;
     }
 
-    private boolean lambdaTransitions(State current, String output){
+    private void lambdaTransitions(State current, String output){
         if (current.isFinal()){
             System.out.println(output);
-            return true;
+             isAccept = true;
         }
-        State[] states = current.lambdaTransitions();
-        for (State state : states)
-            lambdaTransitions(state, output);
-        return false;
+        StateInfo[] statesInfo = current.lambdaTransitions();
+        for (StateInfo stateInfo : statesInfo) {
+            char ch = stateInfo.output();
+            if (ch != '\u0000')
+                lambdaTransitions(stateInfo.state(), output + ch);
+            else
+                lambdaTransitions(stateInfo.state(), output);
+        }
     }
 }
